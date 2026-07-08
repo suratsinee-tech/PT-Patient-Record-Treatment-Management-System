@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Search, Download, Plus, Edit, Trash2, RotateCcw, AlertCircle } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Search, Download, Plus, Edit, Trash2, RotateCcw, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PatientRecord } from '../types';
 import { TREATMENT_LIST } from '../data';
 
@@ -85,14 +85,31 @@ export default function SpreadsheetLog({
     });
   }, [records, searchQuery, selectedMonth, selectedType, selectedGender, selectedTreatment]);
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 10;
+
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedMonth, selectedType, selectedGender, selectedTreatment]);
+
+  // Compute pages
+  const totalPages = Math.ceil(filteredRecords.length / recordsPerPage) || 1;
+
+  const paginatedRecords = useMemo(() => {
+    const startIndex = (currentPage - 1) * recordsPerPage;
+    return filteredRecords.slice(startIndex, startIndex + recordsPerPage);
+  }, [filteredRecords, currentPage]);
+
   // Page Summary values
   const totalRevenueOnPage = useMemo(() => {
-    return filteredRecords.reduce((sum, r) => sum + (r.fee || 0), 0);
-  }, [filteredRecords]);
+    return paginatedRecords.reduce((sum, r) => sum + (r.fee || 0), 0);
+  }, [paginatedRecords]);
 
   const totalNewOnPage = useMemo(() => {
-    return filteredRecords.filter(r => r.serviceType === 'new').length;
-  }, [filteredRecords]);
+    return paginatedRecords.filter(r => r.serviceType === 'new').length;
+  }, [paginatedRecords]);
 
   // Reset all filters
   const resetFilters = () => {
@@ -101,6 +118,26 @@ export default function SpreadsheetLog({
     setSelectedType('all');
     setSelectedGender('all');
     setSelectedTreatment('all');
+    setCurrentPage(1);
+  };
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+        pages.push(i);
+      } else if (i === 2 && currentPage > 3) {
+        pages.push('...');
+      } else if (i === totalPages - 1 && currentPage < totalPages - 2) {
+        pages.push('...');
+      }
+    }
+    return pages.filter((item, index) => {
+      if (item === '...') {
+        return pages[index - 1] !== '...';
+      }
+      return true;
+    });
   };
 
   // CSV Export handler
@@ -318,7 +355,7 @@ export default function SpreadsheetLog({
                 </td>
               </tr>
             ) : (
-              filteredRecords.map((r, index) => {
+              paginatedRecords.map((r, index) => {
                 // format date to BE representation e.g. 24/3/69
                 let formattedDate = r.date;
                 if (r.date) {
@@ -332,7 +369,7 @@ export default function SpreadsheetLog({
                 return (
                   <tr key={r.id} className={`transition-all even:bg-gray-50/30 ${isPink ? 'hover:bg-pink-50/20' : 'hover:bg-teal-50/20'}`}>
                     <td className="py-3 px-4 text-center font-semibold text-gray-400 font-mono">
-                      {index + 1}
+                      {(currentPage - 1) * recordsPerPage + index + 1}
                     </td>
                     <td className="py-3 px-3 font-semibold text-gray-800 font-mono whitespace-nowrap">
                       {formattedDate}
@@ -424,6 +461,76 @@ export default function SpreadsheetLog({
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="px-6 py-3 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white">
+          <div className="text-xs text-gray-500">
+            แสดงรายการที่ <span className="font-semibold text-gray-700">{(currentPage - 1) * recordsPerPage + 1}</span> ถึง{' '}
+            <span className="font-semibold text-gray-700">
+              {Math.min(currentPage * recordsPerPage, filteredRecords.length)}
+            </span>{' '}
+            จากทั้งหมด <span className="font-semibold text-gray-700">{filteredRecords.length}</span> รายการ
+          </div>
+          
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className={`p-1.5 rounded-lg border border-gray-200 transition-all cursor-pointer ${
+                currentPage === 1
+                  ? 'text-gray-300 bg-gray-50 cursor-not-allowed border-gray-100'
+                  : isPink
+                  ? 'text-gray-600 hover:text-[#FF5B8C] hover:border-pink-300 hover:bg-pink-50/20'
+                  : 'text-gray-600 hover:text-teal-600 hover:border-teal-300 hover:bg-teal-50/20'
+              }`}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            
+            {getPageNumbers().map((page, index) => {
+              if (page === '...') {
+                return (
+                  <span key={`ellipsis-${index}`} className="px-1.5 text-xs text-gray-400">
+                    ...
+                  </span>
+                );
+              }
+              
+              const isActive = page === currentPage;
+              return (
+                <button
+                  key={`page-${page}`}
+                  onClick={() => setCurrentPage(Number(page))}
+                  className={`px-3 py-1 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
+                    isActive
+                      ? isPink
+                        ? 'bg-[#FF5B8C] text-white border-[#FF5B8C] shadow-sm'
+                        : 'bg-teal-600 text-white border-teal-600 shadow-sm'
+                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  {page}
+                </button>
+              );
+            })}
+            
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className={`p-1.5 rounded-lg border border-gray-200 transition-all cursor-pointer ${
+                currentPage === totalPages
+                  ? 'text-gray-300 bg-gray-50 cursor-not-allowed border-gray-100'
+                  : isPink
+                  ? 'text-gray-600 hover:text-[#FF5B8C] hover:border-pink-300 hover:bg-pink-50/20'
+                  : 'text-gray-600 hover:text-teal-600 hover:border-teal-300 hover:bg-teal-50/20'
+              }`}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Spreadsheet Footer Summary Panel */}
       <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row justify-between items-center gap-4">
