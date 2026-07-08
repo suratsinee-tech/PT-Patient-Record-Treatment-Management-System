@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Sparkles, FileText, Activity, CreditCard, ChevronRight, Check } from 'lucide-react';
+import { X, FileText, Activity, CreditCard, ChevronRight, Check } from 'lucide-react';
 import { PatientRecord } from '../types';
 import { TREATMENT_LIST, PT_DIAGNOSES } from '../data';
 
@@ -35,9 +35,7 @@ export default function RecordModal({ record, onClose, onSave, theme }: RecordMo
   const [fee, setFee] = useState<number>(0);
   const [remarks, setRemarks] = useState('');
 
-  // UI States
-  const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
-  const [aiError, setAiError] = useState('');
+
 
   // Load record data if editing
   useEffect(() => {
@@ -137,50 +135,7 @@ export default function RecordModal({ record, onClose, onSave, theme }: RecordMo
     }
   };
 
-  // Trigger Gemini AI analysis
-  const handleAiAnalysis = async () => {
-    if (!chiefComplaint.trim()) {
-      setAiError('โปรดกรอกอาการสำคัญก่อนทำรายการ');
-      return;
-    }
-    
-    setIsAiAnalyzing(true);
-    setAiError('');
 
-    try {
-      const response = await fetch('/api/ai/analyze', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ chiefComplaint }),
-      });
-
-      if (!response.ok) {
-        throw new Error('ระบบวิเคราะห์ล้มเหลว กรุณาลองใหม่อีกครั้ง');
-      }
-
-      const data = await response.json();
-      
-      // Update form values with AI recommendations
-      if (data.ptDiagnosis) {
-        setPtDiagnosis(data.ptDiagnosis);
-      }
-      if (data.suggestedTreatments && Array.isArray(data.suggestedTreatments)) {
-        setSelectedTreatments(data.suggestedTreatments);
-      }
-      if (data.suggestedFee) {
-        setFee(data.suggestedFee);
-      }
-      if (data.remarks) {
-        setRemarks(data.remarks);
-      }
-    } catch (err: any) {
-      setAiError(err.message || 'ไม่สามารถติดต่อ AI ได้ในขณะนี้');
-    } finally {
-      setIsAiAnalyzing(false);
-    }
-  };
 
   // Form submit handler
   const handleSubmit = (e: React.FormEvent) => {
@@ -435,23 +390,7 @@ export default function RecordModal({ record, onClose, onSave, theme }: RecordMo
                 <Activity className={`w-4 h-4 ${isPink ? 'text-[#FF5B8C]' : 'text-teal-600'}`} />
                 2. อาการสำคัญและการประเมินทาง clinical
               </h3>
-              
-              <button
-                type="button"
-                onClick={handleAiAnalysis}
-                disabled={isAiAnalyzing}
-                className={`px-4 py-1.5 text-xs font-medium rounded-full flex items-center gap-1.5 transition-all shadow-sm ${isPink ? 'text-pink-700 bg-pink-50 border border-pink-100 hover:bg-pink-100' : 'text-indigo-700 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100'} ${isAiAnalyzing ? 'opacity-60 cursor-not-allowed' : ''}`}
-              >
-                <Sparkles className={`w-3.5 h-3.5 animate-pulse ${isPink ? 'text-[#FF5B8C]' : 'text-indigo-600'}`} />
-                {isAiAnalyzing ? 'กำลังวิเคราะห์ด้วย AI...' : '✨ วิเคราะห์และกรอกด้วย AI ✨'}
-              </button>
             </div>
-
-            {aiError && (
-              <div className="p-3 text-xs bg-red-50 border border-red-100 text-red-600 rounded-lg">
-                {aiError}
-              </div>
-            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -464,9 +403,6 @@ export default function RecordModal({ record, onClose, onSave, theme }: RecordMo
                   onChange={(e) => setChiefComplaint(e.target.value)}
                   className={`w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 ${isPink ? 'focus:ring-pink-400' : 'focus:ring-teal-500'} focus:border-transparent text-sm`}
                 />
-                <span className="block text-[11px] text-gray-400 mt-1">
-                  * พิมพ์อาการผู้ป่วยให้ละเอียดเพื่อให้ระบบ AI ช่วยคาดเดาการวินิจฉัยและการรักษาได้แม่นยำยิ่งขึ้น
-                </span>
               </div>
 
               <div className="flex flex-col h-full">
