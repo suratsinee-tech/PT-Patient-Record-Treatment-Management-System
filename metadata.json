@@ -1,0 +1,6 @@
+{
+  "name": "สหคลินิกเดชอุดม แลบ กายภาพบำบัด",
+  "description": "ระบบบันทึกและจัดการฐานข้อมูลประวัติการรักษาผู้เข้ารับบริการทางกายภาพบำบัด ประจำปี พ.ศ. 2569",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
