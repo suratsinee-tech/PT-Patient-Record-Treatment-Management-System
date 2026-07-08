@@ -266,6 +266,39 @@ async function importBulkRecords(recordsToImport: PatientRecord[]): Promise<Pati
 
 // ================= API ENDPOINTS =================
 
+// GET database status and test connection (diagnostic endpoint)
+app.get("/api/db-status", async (req, res) => {
+  try {
+    const status = {
+      isSupabaseEnabled,
+      supabaseUrlConfigured: !!process.env.SUPABASE_URL,
+      supabaseKeyConfigured: !!process.env.SUPABASE_ANON_KEY,
+      nodeEnv: process.env.NODE_ENV,
+      vercelEnv: !!process.env.VERCEL,
+      testFetch: "not_attempted" as any
+    };
+
+    if (isSupabaseEnabled) {
+      try {
+        const { data, error } = await supabase
+          .from("patient_records")
+          .select("id")
+          .limit(1);
+        if (error) {
+          status.testFetch = { success: false, error: error.message };
+        } else {
+          status.testFetch = { success: true, count: data?.length || 0 };
+        }
+      } catch (e: any) {
+        status.testFetch = { success: false, error: e.message || e };
+      }
+    }
+    res.json(status);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // GET all records
 app.get("/api/records", async (req, res) => {
   try {
