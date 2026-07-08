@@ -4,8 +4,8 @@ import fs from "fs";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
-import { INITIAL_RECORDS } from "../data";
-import { PatientRecord } from "../types";
+import { INITIAL_RECORDS } from "../data.js";
+import { PatientRecord } from "../types.js";
 
 dotenv.config();
 
