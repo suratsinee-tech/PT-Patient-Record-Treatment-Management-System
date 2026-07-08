@@ -427,4 +427,9 @@ async function startServer() {
   });
 }
 
-startServer();
+// Only start the Express listener and Vite middleware if NOT running on Vercel
+if (!process.env.VERCEL) {
+  startServer();
+}
+
+export default app;

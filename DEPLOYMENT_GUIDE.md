@@ -33,13 +33,28 @@
 
 ---
 
-## ส่วนที่ 3: การตั้งค่าบน GitHub & Hosting (เช่น Render, Vercel, Cloud Run) 🌐
+## ส่วนที่ 3: การตั้งค่าบน GitHub & Hosting (เช่น Vercel, Render, Cloud Run) 🌐
 
 1. **ส่งออกโค้ดไปยัง GitHub (Export to GitHub)**:
    - ที่มุมขวาบนของ AI Studio ให้คลิกที่เมนู **Settings** (หรือเมนูส่งออก)
    - เลือก **Export to GitHub** หรือดาวน์โหลดไฟล์ ZIP แล้วอัปโหลดขึ้น GitHub Repository ของคุณเอง
-2. **ตั้งค่าตัวแปรสภาพแวดล้อม (Environment Variables)**:
-   - เมื่อคุณติดตั้งแอปพลิเคชันของคุณบนโฮสติ้ง (เช่น Render, Vercel, Zeabur, หรือ Docker Container) ให้ระบุค่าตัวแปรสิ่งแวดล้อมเหล่านี้ในโปรเจกต์ของคุณ:
+
+2. **การอัปโหลดและเปิดใช้งานบน Vercel (Vercel Deployment)**:
+   ระบบได้รับการจัดเตรียมไฟล์สำหรับการใช้งานบน Vercel แบบ Serverless เรียบร้อยแล้ว (ผ่านไฟล์ `/vercel.json` และ `/api/index.ts` ที่ตั้งค่าการเปลี่ยนทางเส้นทาง API และรองรับ static assets):
+   - สมัครหรือเข้าสู่ระบบ [Vercel](https://vercel.com)
+   - คลิก **Add New** -> **Project** -> นำเข้า (Import) Repository จาก GitHub ที่คุณอัปโหลดไว้
+   - ในหน้าการตั้งค่าโครงงาน (Project Configuration):
+     - **Framework Preset**: เลือกเป็น **Vite**
+     - **Root Directory**: ปล่อยเป็นค่าเริ่มต้น (root `./`)
+     - **Build and Output Settings**: ปล่อยเป็นค่าเริ่มต้น (Vercel จะรัน `npm run build` และดึงผลลัพธ์จากโฟลเดอร์ `dist` เสมอ)
+     - **Environment Variables**: คลิกเพื่อเปิดและเพิ่มตัวแปรด้านล่างนี้:
+       - `SUPABASE_URL` (URL ที่ได้จากส่วนที่ 2)
+       - `SUPABASE_ANON_KEY` (Anon Key ที่ได้จากส่วนที่ 2)
+       - `GEMINI_API_KEY` (API Key ของ Google Gemini)
+   - กดปุ่ม **Deploy** ! ระบบจะทำการคอมไพล์ Frontend และสร้าง Serverless API บน Vercel ให้พร้อมใช้งานทันทีใน 1 นาที 🎉
+
+3. **ตั้งค่าตัวแปรสภาพแวดล้อมอื่น ๆ (Environment Variables Reference)**:
+   เมื่อคุณติดตั้งแอปพลิเคชันของคุณบนโฮสติ้งประเภทอื่น ๆ (เช่น Render, Zeabur, หรือ Docker Container) ให้ระบุค่าตัวแปรสิ่งแวดล้อมเหล่านี้ในโปรเจกต์ของคุณ:
 
 ```env
 # URL และ API Key จาก Supabase ที่คัดลอกมาใน ส่วนที่ 2
@@ -58,5 +73,7 @@ NODE_ENV="production"
 ## โครงสร้างไฟล์ที่เตรียมไว้ให้ในระบบ 📂
 
 - `supabase_schema.sql`: โครงสร้างคำสั่งตาราง ดัชนี นโยบายความปลอดภัย RLS และตัวอย่างข้อมูลเริ่มต้น
+- `vercel.json`: ไฟล์ตั้งค่าการเราเตอร์ (Routing) ของ Vercel เพื่อสลับ API ไปยัง serverless function และโหลด static pages ของ React อย่างเหมาะสม
+- `/api/index.ts`: จุดเริ่มต้น Serverless API function ของ Express สำหรับรันบน Vercel
 - `server.ts`: เซิร์ฟเวอร์ที่รองรับระบบ Dual-Mode (เชื่อมต่อ Supabase โดยอัตโนมัติเมื่อตรวจพบ Credentials และจะสลับกลับมาที่ Local File Storage เสมอหากยังไม่พร้อม เพื่อป้องกันระบบล่ม)
 - `.env.example`: แม่แบบแสดงรายการตัวแปรสิ่งแวดล้อมที่แอปพลิเคชันนี้ใช้งาน
