@@ -36,18 +36,30 @@ export default function SpreadsheetLog({
     'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
   ];
 
-  // Derive unique months for the filter dropdown
+  // Derive all 12 months for each year present in records (defaults to 2026 / 2569) to make it complete ("ปรับเดือนให้ครบถ้วน")
   const monthOptions = useMemo(() => {
-    const monthsSet = new Set<string>();
+    const years = new Set<number>([2026]); // Always include 2026 by default
     records.forEach(r => {
       if (r.date) {
         const parts = r.date.split('-');
-        if (parts.length >= 2) {
-          monthsSet.add(`${parts[0]}-${parts[1]}`);
+        if (parts.length >= 1) {
+          const y = parseInt(parts[0], 10);
+          if (!isNaN(y)) {
+            years.add(y);
+          }
         }
       }
     });
-    return Array.from(monthsSet).sort().reverse();
+
+    const sortedYears = Array.from(years).sort((a, b) => b - a);
+    const allMonths: string[] = [];
+    sortedYears.forEach(y => {
+      for (let m = 12; m >= 1; m--) {
+        const mStr = m.toString().padStart(2, '0');
+        allMonths.push(`${y}-${mStr}`);
+      }
+    });
+    return allMonths;
   }, [records]);
 
   const formatMonthLabel = (yearMonthStr: string) => {

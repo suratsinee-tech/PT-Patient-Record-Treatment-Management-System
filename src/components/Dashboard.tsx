@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { CreditCard, FileText, UserPlus, Users, Flame, Zap } from 'lucide-react';
 import { PatientRecord } from '../types';
+import MonthlyReportModal from './MonthlyReportModal';
 
 interface DashboardProps {
   records: PatientRecord[];
@@ -10,6 +11,8 @@ interface DashboardProps {
 export default function Dashboard({ records, theme }: DashboardProps) {
   const isPink = theme === 'pink';
 
+  const [isReportOpen, setIsReportOpen] = useState(false);
+
   // Available Months for dropdown (from all records)
   // Let's support Thai month names
   const thaiMonths = [
@@ -17,25 +20,30 @@ export default function Dashboard({ records, theme }: DashboardProps) {
     'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
   ];
 
-  // Derive unique months in the records
+  // Derive all 12 months for each year present in records (defaults to 2026 / 2569) to make it complete ("ปรับเดือนให้ครบถ้วน")
   const monthOptions = useMemo(() => {
-    const monthsSet = new Set<string>();
-    
-    // Always guarantee '2026-04' (เมษายน 2569) and '2026-07' (กรกฎาคม 2569) in list
-    monthsSet.add('2026-07');
-    monthsSet.add('2026-04');
-    monthsSet.add('2026-03');
-
+    const years = new Set<number>([2026]); // Always include 2026 by default
     records.forEach(r => {
       if (r.date) {
         const parts = r.date.split('-');
-        if (parts.length >= 2) {
-          monthsSet.add(`${parts[0]}-${parts[1]}`);
+        if (parts.length >= 1) {
+          const y = parseInt(parts[0], 10);
+          if (!isNaN(y)) {
+            years.add(y);
+          }
         }
       }
     });
 
-    return Array.from(monthsSet).sort().reverse(); // Show latest months first
+    const sortedYears = Array.from(years).sort((a, b) => b - a);
+    const allMonths: string[] = [];
+    sortedYears.forEach(y => {
+      for (let m = 12; m >= 1; m--) {
+        const mStr = m.toString().padStart(2, '0');
+        allMonths.push(`${y}-${mStr}`);
+      }
+    });
+    return allMonths;
   }, [records]);
 
   // Selected Month state
@@ -144,8 +152,8 @@ export default function Dashboard({ records, theme }: DashboardProps) {
           </p>
         </div>
         
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-gray-500">เลือกช่วงเวลา:</span>
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          <span className="text-xs font-semibold text-gray-500 whitespace-nowrap">เลือกช่วงเวลา:</span>
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
@@ -157,6 +165,17 @@ export default function Dashboard({ records, theme }: DashboardProps) {
               </option>
             ))}
           </select>
+          
+          <button
+            onClick={() => setIsReportOpen(true)}
+            className={`px-3 py-1.5 border text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              isPink
+                ? 'border-pink-200 text-[#FF5B8C] bg-pink-50/50 hover:bg-pink-100/70'
+                : 'border-teal-200 text-teal-700 bg-teal-50/50 hover:bg-teal-100/70'
+            }`}
+          >
+            📋 รายงานประจำเดือน (PDF/Excel)
+          </button>
         </div>
       </div>
 
@@ -347,6 +366,14 @@ export default function Dashboard({ records, theme }: DashboardProps) {
         </div>
 
       </div>
+
+      <MonthlyReportModal
+        isOpen={isReportOpen}
+        onClose={() => setIsReportOpen(false)}
+        records={records}
+        selectedMonth={selectedMonth}
+        theme={theme}
+      />
 
     </div>
   );
