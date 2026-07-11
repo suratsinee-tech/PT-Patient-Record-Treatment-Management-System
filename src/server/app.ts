@@ -5,7 +5,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 import { INITIAL_RECORDS } from "../data.js";
-import { PatientRecord } from "../types.js";
+import { PatientRecord, Appointment } from "../types.js";
 
 dotenv.config();
 
@@ -79,6 +79,240 @@ function saveRecords(records: PatientRecord[]) {
 // Seed the local JSON file if empty
 if (!isSupabaseEnabled) {
   loadRecords();
+}
+
+// === APPOINTMENTS PERSISTENCE LAYER ===
+const APPOINTMENTS_FILE = path.join(process.cwd(), "appointments.json");
+
+const INITIAL_APPOINTMENTS: Appointment[] = [
+  {
+    id: 'apt-1',
+    patientName: 'นายจักรกริช ราชสิงห์',
+    ptNo: 'PT69-001',
+    date: '2026-07-11',
+    time: '09:30',
+    treatment: 'US (อัลตราซาวด์บำบัด), PMS (กระตุ้นแม่เหล็กระงับปวด)',
+    phone: '081-234-5678',
+    status: 'scheduled',
+    remarks: 'ปวดไหล่เรื้อรัง อาการดีขึ้นปานกลาง',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'apt-2',
+    patientName: 'นางดารารัตน์ รัตนโคตร',
+    ptNo: 'PT69-002',
+    date: '2026-07-11',
+    time: '14:00',
+    treatment: 'PMS (กระตุ้นแม่เหล็กระงับปวด)',
+    phone: '089-876-5432',
+    status: 'scheduled',
+    remarks: 'ปวดหลังเอวร้าวลงสะโพก',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'apt-3',
+    patientName: 'นายเจริญ พฤกษาสน',
+    ptNo: 'PT69-003',
+    date: '2026-07-12',
+    time: '10:00',
+    treatment: 'Hot Pack (ประคบร้อน), Manual Therapy (ขยับดัดดึงข้อต่อ)',
+    phone: '085-333-4444',
+    status: 'scheduled',
+    remarks: 'กล้ามเนื้อบ่าตึงเครียดสะสม',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'apt-4',
+    patientName: 'น.ส. อังคณา จำปาทอง',
+    ptNo: 'PT69-005',
+    date: '2026-07-13',
+    time: '11:30',
+    treatment: 'Laser (เลเซอร์บำบัด), ES (กระตุ้นไฟฟ้า)',
+    phone: '087-555-6666',
+    status: 'scheduled',
+    remarks: 'เจ็บคอร้าวลงบ่า',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'apt-5',
+    patientName: 'นายสุทธิพร ไกรรัตน์',
+    ptNo: 'PT69-009',
+    date: '2026-07-14',
+    time: '15:00',
+    treatment: 'Exercise (ออกกำลังกายบำบัด)',
+    phone: '082-999-0000',
+    status: 'scheduled',
+    remarks: 'ออกกำลังเพิ่มกำลังกล้ามเนื้อแกนกลางลำตัว',
+    createdAt: new Date().toISOString()
+  }
+];
+
+function loadAppointments(): Appointment[] {
+  if (!fs.existsSync(APPOINTMENTS_FILE)) {
+    try {
+      fs.writeFileSync(APPOINTMENTS_FILE, JSON.stringify(INITIAL_APPOINTMENTS, null, 2), "utf-8");
+      return INITIAL_APPOINTMENTS;
+    } catch (e) {
+      console.error("Error writing initial appointments seed data:", e);
+      return INITIAL_APPOINTMENTS;
+    }
+  }
+  try {
+    const content = fs.readFileSync(APPOINTMENTS_FILE, "utf-8");
+    return JSON.parse(content);
+  } catch (e) {
+    console.error("Error reading appointments file:", e);
+    return INITIAL_APPOINTMENTS;
+  }
+}
+
+function saveAppointments(appointments: Appointment[]) {
+  try {
+    fs.writeFileSync(APPOINTMENTS_FILE, JSON.stringify(appointments, null, 2), "utf-8");
+  } catch (e) {
+    console.error("Error saving appointments:", e);
+  }
+}
+
+if (!isSupabaseEnabled) {
+  loadAppointments();
+}
+
+async function getAllAppointments(): Promise<Appointment[]> {
+  if (isSupabaseEnabled) {
+    try {
+      const { data, error } = await supabase
+        .from("appointments")
+        .select("*")
+        .order("date", { ascending: true })
+        .order("time", { ascending: true });
+      if (error) {
+        console.warn("Supabase appointments error, falling back to local file storage:", error.message);
+        return loadAppointments();
+      }
+      return data || [];
+    } catch (err: any) {
+      console.warn("Supabase appointments exception, falling back to local file storage:", err);
+      return loadAppointments();
+    }
+  } else {
+    return loadAppointments();
+  }
+}
+
+async function addAppointment(newAppt: Appointment): Promise<Appointment> {
+  if (!newAppt.id) {
+    newAppt.id = 'apt_' + Math.random().toString(36).substr(2, 9);
+  }
+  newAppt.createdAt = new Date().toISOString();
+
+  if (isSupabaseEnabled) {
+    try {
+      const { data, error } = await supabase
+        .from("appointments")
+        .insert([newAppt])
+        .select();
+      if (error) {
+        console.warn("Supabase appointments insert error, falling back to local file storage:", error.message);
+        const appts = loadAppointments();
+        appts.push(newAppt);
+        saveAppointments(appts);
+        return newAppt;
+      }
+      return data && data[0] ? data[0] : newAppt;
+    } catch (err) {
+      console.warn("Supabase appointments insert exception, falling back to local file storage:", err);
+      const appts = loadAppointments();
+      appts.push(newAppt);
+      saveAppointments(appts);
+      return newAppt;
+    }
+  } else {
+    const appts = loadAppointments();
+    appts.push(newAppt);
+    saveAppointments(appts);
+    return newAppt;
+  }
+}
+
+async function updateAppointment(id: string, updatedFields: Partial<Appointment>): Promise<Appointment> {
+  if (isSupabaseEnabled) {
+    try {
+      const { data, error } = await supabase
+        .from("appointments")
+        .update(updatedFields)
+        .eq("id", id)
+        .select();
+      if (error) {
+        console.warn("Supabase appointments update error, falling back to local file storage:", error.message);
+        const appts = loadAppointments();
+        const index = appts.findIndex(a => a.id === id);
+        if (index === -1) throw new Error("Appointment not found");
+        const updated = { ...appts[index], ...updatedFields };
+        appts[index] = updated;
+        saveAppointments(appts);
+        return updated;
+      }
+      if (!data || data.length === 0) {
+        throw new Error("Appointment not found in Supabase");
+      }
+      return data[0];
+    } catch (err) {
+      console.warn("Supabase appointments update exception, falling back to local file storage:", err);
+      const appts = loadAppointments();
+      const index = appts.findIndex(a => a.id === id);
+      if (index === -1) throw new Error("Appointment not found");
+      const updated = { ...appts[index], ...updatedFields };
+      appts[index] = updated;
+      saveAppointments(appts);
+      return updated;
+    }
+  } else {
+    const appts = loadAppointments();
+    const index = appts.findIndex(a => a.id === id);
+    if (index === -1) {
+      throw new Error("Appointment not found");
+    }
+    const updated = { ...appts[index], ...updatedFields };
+    appts[index] = updated;
+    saveAppointments(appts);
+    return updated;
+  }
+}
+
+async function deleteAppointmentById(id: string): Promise<boolean> {
+  if (isSupabaseEnabled) {
+    try {
+      const { error } = await supabase
+        .from("appointments")
+        .delete()
+        .eq("id", id);
+      if (error) {
+        console.warn("Supabase appointments delete error, falling back to local file storage:", error.message);
+        const appts = loadAppointments();
+        const filtered = appts.filter(a => a.id !== id);
+        if (filtered.length === appts.length) return false;
+        saveAppointments(filtered);
+        return true;
+      }
+      return true;
+    } catch (err) {
+      console.warn("Supabase appointments delete exception, falling back to local file storage:", err);
+      const appts = loadAppointments();
+      const filtered = appts.filter(a => a.id !== id);
+      if (filtered.length === appts.length) return false;
+      saveAppointments(filtered);
+      return true;
+    }
+  } else {
+    const appts = loadAppointments();
+    const filtered = appts.filter(a => a.id !== id);
+    if (filtered.length === appts.length) {
+      return false;
+    }
+    saveAppointments(filtered);
+    return true;
+  }
 }
 
 // Unified Async Database Operations Layer
@@ -194,7 +428,18 @@ async function deleteRecordById(id: string): Promise<boolean> {
 }
 
 async function resetDbToSeed(): Promise<PatientRecord[]> {
+  // Always reset local appointments
+  saveAppointments(INITIAL_APPOINTMENTS);
+
   if (isSupabaseEnabled) {
+    // Reset appointments in Supabase if table exists
+    try {
+      await supabase.from("appointments").delete().neq("id", "none");
+      await supabase.from("appointments").insert(INITIAL_APPOINTMENTS);
+    } catch (e) {
+      console.warn("Could not reset appointments in Supabase, skipping:", e);
+    }
+
     const { error: deleteError } = await supabase
       .from("patient_records")
       .delete()
@@ -219,7 +464,17 @@ async function resetDbToSeed(): Promise<PatientRecord[]> {
 }
 
 async function clearAllDbRecords(): Promise<PatientRecord[]> {
+  // Always clear local appointments
+  saveAppointments([]);
+
   if (isSupabaseEnabled) {
+    // Clear appointments in Supabase if table exists
+    try {
+      await supabase.from("appointments").delete().neq("id", "none");
+    } catch (e) {
+      console.warn("Could not clear appointments in Supabase, skipping:", e);
+    }
+
     const { error } = await supabase
       .from("patient_records")
       .delete()
@@ -371,6 +626,53 @@ app.post("/api/records/import", async (req, res) => {
     }
     const processed = await importBulkRecords(recordsToImport);
     res.json({ success: true, count: processed.length, records: processed });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ================= APPOINTMENTS ENDPOINTS =================
+
+// GET all appointments
+app.get("/api/appointments", async (req, res) => {
+  try {
+    const appointments = await getAllAppointments();
+    res.json(appointments);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST a new appointment
+app.post("/api/appointments", async (req, res) => {
+  try {
+    const saved = await addAppointment(req.body);
+    res.status(201).json(saved);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT (update) an existing appointment
+app.put("/api/appointments/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updated = await updateAppointment(id, req.body);
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE an appointment
+app.delete("/api/appointments/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const success = await deleteAppointmentById(id);
+    if (!success) {
+      return res.status(404).json({ error: "Appointment not found" });
+    }
+    res.json({ success: true, message: "Appointment deleted successfully" });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

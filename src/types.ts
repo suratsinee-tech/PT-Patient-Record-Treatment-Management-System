@@ -26,3 +26,17 @@ export interface SystemStats {
   newCases: number;
   followups: number;
 }
+
+export interface Appointment {
+  id: string;
+  patientName: string;
+  ptNo?: string;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:MM
+  treatment: string;
+  phone?: string;
+  status: 'scheduled' | 'completed' | 'cancelled';
+  remarks?: string;
+  createdAt?: string;
+}
+

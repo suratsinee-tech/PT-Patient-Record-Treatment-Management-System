@@ -107,3 +107,40 @@ INSERT INTO patient_records (
   '["PMS"]'::jsonb, '', 500, '', '2026-04-16T13:45:00Z'::timestamptz
 )
 ON CONFLICT (id) DO NOTHING;
+
+-- 6. CREATE appointments TABLE (For Pre-Scheduled Calendar)
+CREATE TABLE IF NOT EXISTS appointments (
+  id TEXT PRIMARY KEY,
+  "patientName" TEXT NOT NULL,
+  "ptNo" TEXT,
+  date TEXT NOT NULL, -- YYYY-MM-DD
+  "time" TEXT NOT NULL, -- HH:MM
+  treatment TEXT NOT NULL,
+  phone TEXT,
+  status TEXT NOT NULL DEFAULT 'scheduled', -- scheduled, completed, cancelled
+  remarks TEXT,
+  "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CREATE INDEXES FOR OPTIMAL CALENDAR PERFORMANCE
+CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments(date);
+
+-- CONFIGURE ROW LEVEL SECURITY (RLS) FOR appointments
+ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow read access to appointments" 
+  ON appointments FOR SELECT 
+  USING (true);
+
+CREATE POLICY "Allow insert access to appointments" 
+  ON appointments FOR INSERT 
+  WITH CHECK (true);
+
+CREATE POLICY "Allow update access to appointments" 
+  ON appointments FOR UPDATE 
+  USING (true);
+
+CREATE POLICY "Allow delete access to appointments" 
+  ON appointments FOR DELETE 
+  USING (true);
+

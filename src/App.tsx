@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, Database, BarChart3, ListCollapse, Plus, HelpCircle, Loader2, Palette, Lock, Unlock } from 'lucide-react';
+import { Heart, Database, BarChart3, ListCollapse, Plus, HelpCircle, Loader2, Palette, Lock, Unlock, CalendarDays } from 'lucide-react';
 import { PatientRecord } from './types';
 import Dashboard from './components/Dashboard';
 import SpreadsheetLog from './components/SpreadsheetLog';
 import BackupSettings from './components/BackupSettings';
+import AppointmentCalendar from './components/AppointmentCalendar';
 import RecordModal from './components/RecordModal';
 import AdminLoginModal from './components/AdminLoginModal';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'spreadsheet' | 'dashboard' | 'backup'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'spreadsheet' | 'dashboard' | 'backup' | 'calendar'>('calendar');
   const [records, setRecords] = useState<PatientRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -266,6 +267,13 @@ export default function App() {
               สมุดบันทึกรายการ (Spreadsheet Log)
             </button>
             <button
+              onClick={() => setActiveTab('calendar')}
+              className={`py-3.5 px-4 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${activeTab === 'calendar' ? (isPink ? 'border-[#FF5B8C] text-[#FF5B8C]' : 'border-teal-600 text-teal-600') : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'}`}
+            >
+              <CalendarDays className="w-4 h-4" />
+              ปฏิทินนัดหมายล่วงหน้า (Appointments)
+            </button>
+            <button
               onClick={() => setActiveTab('dashboard')}
               className={`py-3.5 px-4 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${activeTab === 'dashboard' ? (isPink ? 'border-[#FF5B8C] text-[#FF5B8C]' : 'border-teal-600 text-teal-600') : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'}`}
             >
@@ -311,6 +319,15 @@ export default function App() {
                 onAddClick={handleAddClick}
                 onEditClick={handleEditClick}
                 onDeleteClick={handleDeleteRecord}
+                theme={theme}
+                isAdmin={isAdmin}
+                onVerifyAdmin={handleVerifyAdmin}
+              />
+            )}
+
+            {activeTab === 'calendar' && (
+              <AppointmentCalendar
+                records={records}
                 theme={theme}
                 isAdmin={isAdmin}
                 onVerifyAdmin={handleVerifyAdmin}
